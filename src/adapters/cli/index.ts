@@ -1,13 +1,16 @@
+import { existsSync } from 'node:fs';
 import { Command } from 'commander';
 import { defaultConfigPath, loadConfig } from '../../core/config/load.ts';
 import type { Config } from '../../core/config/schema.ts';
 import { BifrostError, errorMessage } from '../../core/errors.ts';
 import { buildGateCommand } from '../../core/gate.ts';
+import { defaultStorePath } from '../../core/store.ts';
 import { isAllowed } from '../../core/policy.ts';
 import { createRuntime } from '../../core/runtime.ts';
 import { execute } from '../../operations/execute.ts';
 import { registry } from '../../operations/registry.ts';
 import { VERSION } from '../../version.ts';
+import { registerConnectionCommands } from './connect.ts';
 import { printResult } from './format.ts';
 import { optionsFromSchema } from './zod-to-options.ts';
 
@@ -51,6 +54,8 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     .option('--json', 'JSON output (for scripts)')
     .showHelpAfterError();
 
+  registerConnectionCommands(program);
+
   program
     .command('mcp')
     .description('Start the MCP server on stdio (for Claude Desktop, Cursor, etc.)')
@@ -64,7 +69,10 @@ export async function runCli(argv: string[] = process.argv): Promise<void> {
     .description('Check config, host key, authentication and the bifrost-gate on the server')
     .action(async () => {
       const cfg = requireConfig();
-      process.stderr.write(`config: ${configPath} ✓\n`);
+      process.stderr.write(
+        existsSync(configPath) ? `config: ${configPath} ✓\n` : 'config: no file, using the saved connection defaults ✓\n',
+      );
+      if (cfg.auth.method === 'password') process.stderr.write(`auth: password from ${defaultStorePath()}\n`);
       await withRuntime(cfg, async (rt) => {
         const res = await rt.executor.exec(buildGateCommand('ping'), { timeoutMs: cfg.limits.timeoutMs, maxBytes: 1024 });
         process.stderr.write(`ssh: ${cfg.server.username}@${cfg.server.host} (host key ${cfg.server.fingerprint}) ✓\n`);

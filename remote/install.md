@@ -53,9 +53,31 @@ restrict,command="sudo -n /usr/local/bin/bifrost-gate" ssh-ed25519 AAAA...your-p
 `restrict` disables PTY allocation and port/agent/X11 forwarding. `command=` ignores whatever the
 client asks for and exposes the original request in `$SSH_ORIGINAL_COMMAND`, which the gate validates.
 
+## 5b. Password login (only if you use `bifrost connect` with a password) {#password-login}
+
+`command=` in `authorized_keys` only applies to that key. With a password, sshd would give a full shell
+unless you force the gate for the whole user. Add to the END of `/etc/ssh/sshd_config`:
+
+```
+Match User bifrost
+    PasswordAuthentication yes
+    ForceCommand sudo -n /usr/local/bin/bifrost-gate
+    DisableForwarding yes
+    PermitTTY no
+```
+
+```bash
+sudo passwd bifrost            # long, random password
+sudo sshd -t && sudo systemctl reload ssh
+ssh bifrost@host 'cat /etc/shadow'    # must be refused by the gate, not executed
+```
+
+Key auth is still the stronger option: a password can be brute-forced over the network (use fail2ban or
+a firewall allowlist) and Bifrost stores it in plain text locally.
+
 ## 6. Host key fingerprint (for `server.fingerprint`)
 
-Run this **on the server** (or obtain it through a trusted channel) and copy it into your config:
+Run this **on the server** (or obtain it through a trusted channel) and copy it into your config, or compare it with what `bifrost connect` shows:
 
 ```bash
 ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub

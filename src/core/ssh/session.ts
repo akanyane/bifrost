@@ -84,7 +84,9 @@ export class SshSession implements Executor {
         } else if (err.level === 'client-authentication') {
           reject(
             new BifrostError(
-              `Authentication rejected for ${username}@${host}. Is the key loaded in ssh-agent and present in authorized_keys?`,
+              this.#config.auth.method === 'password'
+                ? `Authentication rejected for ${username}@${host}: wrong password, or PasswordAuthentication is off in sshd. Run \`bifrost connect\` again to update it.`
+                : `Authentication rejected for ${username}@${host}. Is the key loaded in ssh-agent and present in authorized_keys?`,
               'SSH',
               { cause: err },
             ),
@@ -106,7 +108,7 @@ export class SshSession implements Executor {
   }
 }
 
-function runOnChannel(client: Client, command: string, opts: ExecOptions): Promise<ExecResult> {
+export function runOnChannel(client: Client, command: string, opts: ExecOptions): Promise<ExecResult> {
   return new Promise<ExecResult>((resolve, reject) => {
     client.exec(command, (err, stream) => {
       if (err) {

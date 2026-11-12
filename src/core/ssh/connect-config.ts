@@ -41,6 +41,11 @@ export async function buildConnectConfig(config: Config, check: HostKeyCheck = {
     },
   };
 
+  if (auth.method === 'password') {
+    // No keyboard-interactive: a PAM prompt that is not the password would hang or leak it.
+    return { ...base, password: auth.password, tryKeyboard: false };
+  }
+
   if (auth.method === 'agent') {
     const sock = process.env.SSH_AUTH_SOCK;
     if (!sock) {
