@@ -1,0 +1,58 @@
+{
+  "name": "bifrost",
+  "version": "0.0.0",
+  "description": "CLI and local MCP server (stdio) to operate an Ubuntu server over SSH through typed, scoped operations — no raw shell for humans or AI agents.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ssh",
+    "docker",
+    "cli",
+    "devops",
+    "ai-agents",
+    "claude",
+    "cursor"
+  ],
+  "homepage": "https://github.com/akanyane/bifrost#readme",
+  "bugs": {
+    "url": "https://github.com/akanyane/bifrost/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akanyane/bifrost.git"
+  },
+  "license": "MIT",
+  "author": "Akanyane",
+  "type": "module",
+  "bin": {
+    "bifrost": "dist/bifrost.js"
+  },
+  "files": [
+    "dist",
+    "remote",
+    "config.example.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "node src/bin/bifrost.ts",
+    "build": "tsup",
+    "typecheck": "tsc",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/bifrost.js mcp"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "commander": "^15.1.0",
+    "ssh2": "^1.17.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/ssh2": "^1.15.6",
+    "tsup": "^9.0.0",
+    "typescript": "^7.0.2"
+  }
+}

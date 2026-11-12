@@ -1,0 +1,16 @@
+{
+  "server": {
+    "host": "203.0.113.10",
+    "port": 22,
+    "username": "bifrost",
+    "hostKeyAlgorithm": "ssh-ed25519",
+    "fingerprint": "SHA256:REPLACE_WITH_OUTPUT_OF_ssh-keygen_-lf_ON_THE_SERVER_xx"
+  },
+  "auth": { "method": "agent" },
+  "containers": ["web", "api", "worker"],
+  "policy": {
+    "cli": { "maxRisk": "write" },
+    "mcp": { "maxRisk": "read", "writesPerWindow": 5, "windowSeconds": 600 }
+  },
+  "limits": { "timeoutMs": 15000, "maxOutputBytes": 65536, "maxChannels": 4 }
+}
