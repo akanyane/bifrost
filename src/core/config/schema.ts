@@ -8,15 +8,16 @@ export type Risk = z.infer<typeof RiskSchema>;
 
 export type Surface = 'cli' | 'mcp';
 
+export const HOST_KEY_ALGORITHMS = ['ssh-ed25519', 'ecdsa-sha2-nistp256', 'rsa-sha2-512', 'rsa-sha2-256'] as const;
+export type HostKeyAlgorithm = (typeof HOST_KEY_ALGORITHMS)[number];
+
 export const ConfigSchema = z.object({
   server: z.object({
     host: z.string().min(1),
     port: z.number().int().min(1).max(65535).default(22),
     username: z.string().min(1).default('bifrost'),
     /** Pinned so the fingerprint we compare always belongs to the same host key. */
-    hostKeyAlgorithm: z
-      .enum(['ssh-ed25519', 'ecdsa-sha2-nistp256', 'rsa-sha2-512', 'rsa-sha2-256'])
-      .default('ssh-ed25519'),
+    hostKeyAlgorithm: z.enum(HOST_KEY_ALGORITHMS).default('ssh-ed25519'),
     fingerprint: z
       .string()
       .regex(/^SHA256:[A-Za-z0-9+/]{43}$/, 'use the "SHA256:..." format printed by `ssh-keygen -lf`'),
@@ -31,6 +32,8 @@ export const ConfigSchema = z.object({
         /** Name of the environment variable holding the passphrase (never the passphrase itself). */
         passphraseEnv: z.string().optional(),
       }),
+      /** Only injected from the local store (`bifrost connect`); loadConfig rejects it in the config file. */
+      z.object({ method: z.literal('password'), password: z.string().min(1) }),
     ])
     .default({ method: 'agent' }),
 

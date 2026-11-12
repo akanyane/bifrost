@@ -24,7 +24,7 @@ real boundary **on the server**, so even a misbehaving client cannot do more tha
 |---|---|---|
 | `bifrost-gate` (forced command + sudo) | server | **The real boundary.** The Bifrost key can only run fixed verbs with validated arguments and a container allowlist. Holds even if someone uses the key outside Bifrost. |
 | `bifrost` user not in the `docker` group | server | Docker is only reachable through the gate (docker group = root). |
-| Pinned host key (`server.fingerprint`) | client | No MITM (`ssh2` does not verify host keys by default). |
+| Pinned host key (`server.fingerprint`, or trusted at `bifrost connect`) | client | No MITM (`ssh2` does not verify host keys by default). |
 | Per-surface policy (`maxRisk`) | client | MCP is `read` by default; tools above the limit are not even registered. |
 | Zod schemas derived from the config | client | The agent only sees, and can only send, allowlisted containers and bounded numbers. |
 | Token protocol | client | Shell is never sent: only `[A-Za-z0-9_.:-]` tokens. |
@@ -36,9 +36,32 @@ real boundary **on the server**, so even a misbehaving client cannot do more tha
 Requires Node.js ≥ 22.18.
 
 1. **Server:** follow [`remote/install.md`](remote/install.md).
-2. **Local config:** copy [`config.example.json`](config.example.json) to `~/.config/bifrost/config.json`
-   and set the host, fingerprint and containers.
-3. **Check:** `bifrost doctor`
+2. **Connect** (IP, user and password, saved in a local SQLite store):
+   ```bash
+   bifrost connect --ip 203.0.113.10 --user bifrost        # prompts for the password without echo
+   ```
+   The first time, it shows the server's host key fingerprint and asks you to compare it with
+   `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` run on the server (or pass `--fingerprint SHA256:...`).
+   Then it checks the login and `bifrost-gate ping`.
+   Alternatively, use key auth via `~/.config/bifrost/config.json` (see [`config.example.json`](config.example.json)).
+3. **Containers / policy (optional):** a `config.json` with only `containers`, `policy` and `limits` is still
+   read; the active connection supplies `server` and `auth`.
+4. **Check:** `bifrost doctor`
+
+### Saved connections
+
+| Command | What it does |
+|---|---|
+| `bifrost connect --ip <host> --user <user> [--password <pw>] [--port 22] [--fingerprint SHA256:...] [--name default]` | Verify, test and save a server; it becomes the active one. Reconnecting to the same host reuses the trusted fingerprint (a changed key is refused). |
+| `bifrost connections` | List saved connections (`*` = active). Passwords are never printed. |
+| `bifrost use <name>` | Switch the active connection. |
+| `bifrost disconnect [--name default]` | Delete a connection and its password. |
+
+The store lives at `~/.local/share/bifrost/bifrost.db` (override with `BIFROST_DB`), mode `0600`.
+**The password is stored in plain text** there: anything that can read your files, including an AI agent with
+a terminal, can read it. Avoid `--password` on the command line (shell history, `ps`); omit it to be prompted.
+With password login, the server must force the gate for that user via `ForceCommand`
+(see [`remote/install.md`](remote/install.md#password-login)), otherwise the password is a full shell.
 
 ```bash
 git clone https://github.com/akanyane/bifrost.git && cd bifrost
@@ -59,14 +82,14 @@ node dist/bifrost.js --json docker ps                 # machine-readable output
 | `server.host` / `port` / `username` | – / `22` / `bifrost` | SSH target. |
 | `server.fingerprint` | required | Host key fingerprint, `SHA256:...` (from `ssh-keygen -lf` on the server). |
 | `server.hostKeyAlgorithm` | `ssh-ed25519` | Pinned host key algorithm, so the fingerprint always refers to the same key. |
-| `auth` | `{ "method": "agent" }` | `agent` (uses `SSH_AUTH_SOCK`) or `{ "method": "key", "privateKeyPath", "passphraseEnv" }`. |
+| `auth` | `{ "method": "agent" }` | `agent` (uses `SSH_AUTH_SOCK`) or `{ "method": "key", "privateKeyPath", "passphraseEnv" }`. Password auth only comes from `bifrost connect`, never from this file. |
 | `containers` | `[]` | Allowlist. Must match `/etc/bifrost/containers` on the server. |
 | `policy.cli.maxRisk` | `write` | Highest risk (`read` < `write` < `destructive`) allowed from the CLI. |
 | `policy.mcp.maxRisk` | `read` | Highest risk allowed for agents. |
 | `policy.mcp.writesPerWindow` / `windowSeconds` | `5` / `600` | Rate limit for agent write operations. |
 | `limits.timeoutMs` / `maxOutputBytes` / `maxChannels` | `15000` / `65536` / `4` | Per-command timeout, output cap, concurrent SSH channels. |
 
-The config path can be overridden with `--config <path>` or `BIFROST_CONFIG`. Log level via `BIFROST_LOG` (`debug`, `info`, `warn`, `error`, `silent`).
+When a connection is active (`bifrost connect`), it overrides `server` and `auth`. The config path can be overridden with `--config <path>` or `BIFROST_CONFIG`. Log level via `BIFROST_LOG` (`debug`, `info`, `warn`, `error`, `silent`).
 
 ## Using it as an MCP server
 

@@ -5,6 +5,8 @@ export default defineConfig({
   format: ['esm'],
   platform: 'node',
   target: 'node22',
+  // Keep "node:" imports: node:sqlite only exists with the prefix.
+  removeNodeProtocol: false,
   outDir: 'dist',
   clean: true,
   sourcemap: true,
